@@ -6,12 +6,44 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repository contains C++ programs for working with ArUco augmented reality markers using OpenCV 4. The programs handle marker generation, detection, camera calibration, and pose estimation.
 
-**Important**: Requires OpenCV 4 (for OpenCV 3, use the `cv3` branch).
+**Important**: Requires OpenCV 4.7+ (uses the new ArUco API in `opencv2/objdetect`).
 
 ## Build Commands
 
-Each program is built independently using CMake. The pattern is the same for all:
+### Windows (Visual Studio 2022 + vcpkg)
 
+**Prerequisites:**
+- Visual Studio 2022 with C++ workload
+- vcpkg with OpenCV installed: `vcpkg install opencv4[contrib]:x64-windows`
+
+**Build from root directory (unified solution):**
+```powershell
+# Configure with vcpkg toolchain
+cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+# Build all projects
+cmake --build build --config Release
+
+# Or open in Visual Studio
+start build/aruco_markers.sln
+```
+
+**Using CMake Presets (requires VCPKG_ROOT environment variable):**
+```powershell
+$env:VCPKG_ROOT = "C:\path\to\vcpkg"
+cmake --preset windows-x64-release
+cmake --build build --config Release
+```
+
+### Linux/macOS
+
+```bash
+mkdir build && cd build
+cmake ..
+make
+```
+
+Or build individual programs:
 ```bash
 cd <program_directory>
 mkdir build && cd build
@@ -19,8 +51,11 @@ cmake ../
 make
 ```
 
-Programs:
+## Programs
+
 - `create_markers/` - Generates marker images and boards
+  - `generate_marker` - Creates single marker images
+  - `generate_board` - Creates grid board images
 - `detect_marker/` - Detects markers from camera/video
 - `camera_calibration/` - Calibrates camera using ArUco board
 - `pose_estimation/` - Estimates marker pose (translation/rotation)
@@ -30,8 +65,8 @@ Programs:
 
 **Generate markers:**
 ```bash
-./generate_marker --b=1 -d=16 --id=108 --ms=400 --si marker.jpg
-./generate_board --bb=1 -h=2 -w=4 -l=200 -s=100 -d=16 --si board.jpg
+./generate_marker -d=16 --id=108 --ms=400 --si marker.jpg
+./generate_board -w=4 -h=2 -l=200 -s=100 -d=16 --si board.jpg
 ```
 
 **Detect markers (with test video):**
@@ -65,12 +100,19 @@ Programs:
 - Programs expect calibration file at `../../calibration_params.yml` relative to build directory
 - Dictionary ID 16 (`DICT_ARUCO_ORIGINAL`) is the default
 
-### OpenCV ArUco API Usage
-All programs use the OpenCV ArUco module (`opencv2/aruco.hpp`):
-- `cv::aruco::detectMarkers()` - Marker detection
-- `cv::aruco::estimatePoseSingleMarkers()` - Pose estimation
+### OpenCV ArUco API (4.7+)
+All programs use the OpenCV ArUco module from `opencv2/objdetect`:
+- `cv::aruco::ArucoDetector` - Detector class with `detectMarkers()` method
+- `cv::aruco::Dictionary` - Marker dictionary (use `getPredefinedDictionary()`)
+- `cv::aruco::GridBoard` - Board class with `generateImage()` and `matchImagePoints()`
+- `cv::aruco::generateImageMarker()` - Generate marker images
 - `cv::aruco::drawDetectedMarkers()` - Visualization
-- `cv::aruco::drawAxis()` - Draw coordinate axes
+- `cv::solvePnP()` + `cv::drawFrameAxes()` - Pose estimation and axis drawing
+
+### Build Configuration
+- `CMakeLists.txt` (root) - Unified solution for all programs
+- `CMakePresets.json` - VS2022 + vcpkg configuration presets
+- Each subdirectory has its own `CMakeLists.txt` for standalone builds
 
 ## Docker Support
 
