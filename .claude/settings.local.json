@@ -11,7 +11,14 @@
       "Bash(cmd /c \"vcpkg list\")",
       "Bash(vcpkg search:*)",
       "Bash(set VCPKG_ROOT=C:rsnvcpkg)",
-      "Bash(cmake:*)"
+      "Bash(cmake:*)",
+      "Bash(dir:*)",
+      "Bash(del \"\\\\?\\\\D:\\\\GitHub\\\\aruco-markers\\\\nul\")",
+      "Bash(cmd /c \"del \\\\?\\\\D:\\\\GitHub\\\\aruco-markers\\\\nul\")",
+      "Bash(powershell -Command \"Remove-Item -LiteralPath ''\\\\?\\\\D:\\\\GitHub\\\\aruco-markers\\\\nul'' -Force\")",
+      "Bash(powershell -Command \"Remove-Item -LiteralPath ''D:\\\\GitHub\\\\aruco-markers\\\\nul'' -Force\")",
+      "Bash(cmd //c \"del /f /q \\\\\\\\?\\\\D:\\\\GitHub\\\\aruco-markers\\\\nul\")",
+      "Bash(python:*)"
     ]
   }
 }
