@@ -1,24 +1,20 @@
-cmake_minimum_required(VERSION 3.16.3)
-project(camera_calibration)
+cmake_minimum_required(VERSION 3.16)
+project(camera_calibration_proj LANGUAGES CXX)
 
-set (CMAKE_CXX_STANDARD 11)
-find_package(OpenCV REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${OPENCV_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/include)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs highgui calib3d objdetect videoio)
 
-link_directories(${OpenCV_LIBRARY_DIRS})
+add_executable(camera_calibration src/main.cpp)
+target_include_directories(camera_calibration PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(camera_calibration PRIVATE ${OpenCV_LIBRARIES})
 
-set(camera_calibration_src
-    src/main.cpp
-   )
-add_executable(camera_calibration ${camera_calibration_src})
-target_link_libraries(camera_calibration
-    ${OpenCV_LIBRARIES}
-    )
-
-target_compile_options(camera_calibration
-    PRIVATE -O3 -std=c++11
-    )
-
-
+# Platform-specific optimizations
+if(MSVC)
+    target_compile_options(camera_calibration PRIVATE /O2)
+else()
+    target_compile_options(camera_calibration PRIVATE -O3)
+endif()

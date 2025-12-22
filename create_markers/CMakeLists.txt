@@ -1,34 +1,30 @@
-cmake_minimum_required(VERSION 3.16.3)
-project(aruco_markers)
+cmake_minimum_required(VERSION 3.16)
+project(create_markers LANGUAGES CXX)
 
-set (CMAKE_CXX_STANDARD 11)
-find_package(OpenCV REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${OPENCV_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/include)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs highgui objdetect)
 
+# generate_marker executable
+add_executable(generate_marker src/create_marker.cpp)
+target_include_directories(generate_marker PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(generate_marker PRIVATE ${OpenCV_LIBRARIES})
 
-set(generate_marker_src
-    src/create_marker.cpp
-   )
-add_executable(generate_marker ${generate_marker_src})
-target_link_libraries(generate_marker 
-    ${OpenCV_LIBRARIES}
-    )
+# generate_board executable
+add_executable(generate_board src/create_board.cpp)
+target_include_directories(generate_board PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(generate_board PRIVATE ${OpenCV_LIBRARIES})
 
-target_compile_options(generate_marker
-    PRIVATE -O3 -std=c++11
-    )
-
-
-set(generate_board_src
-    src/create_board.cpp
-   )
-add_executable(generate_board ${generate_board_src})
-target_link_libraries(generate_board 
-    ${OpenCV_LIBRARIES}
-    )
-
-target_compile_options(generate_board
-    PRIVATE -O3 -std=c++11
-    )
+# Platform-specific optimizations
+if(MSVC)
+    target_compile_options(generate_marker PRIVATE /O2)
+    target_compile_options(generate_board PRIVATE /O2)
+else()
+    target_compile_options(generate_marker PRIVATE -O3)
+    target_compile_options(generate_board PRIVATE -O3)
+endif()

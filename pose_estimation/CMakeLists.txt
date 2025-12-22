@@ -1,25 +1,21 @@
-cmake_minimum_required(VERSION 3.16.3)
-project(pose_estimation)
+cmake_minimum_required(VERSION 3.16)
+project(pose_estimation_proj LANGUAGES CXX)
 
-set (CMAKE_CXX_STANDARD 11)
-find_package(OpenCV REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${OPENCV_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/../common/include)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs highgui calib3d objdetect videoio)
 
-link_directories(${OpenCV_LIBRARY_DIRS})
+add_executable(pose_estimation src/main.cpp)
+target_include_directories(pose_estimation PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/include
+)
+target_link_libraries(pose_estimation PRIVATE ${OpenCV_LIBRARIES})
 
-set(pose_estimation_src
-    src/main.cpp
-   )
-add_executable(pose_estimation ${pose_estimation_src})
-target_link_libraries(pose_estimation
-    ${OpenCV_LIBRARIES}
-    )
-
-target_compile_options(pose_estimation
-    PRIVATE -O3 -std=c++11
-    )
-
-
+# Platform-specific optimizations
+if(MSVC)
+    target_compile_options(pose_estimation PRIVATE /O2)
+else()
+    target_compile_options(pose_estimation PRIVATE -O3)
+endif()

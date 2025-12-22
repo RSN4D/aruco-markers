@@ -2,7 +2,8 @@
 #define __FDCL_COMMON_HPP__
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/aruco.hpp>
+#include <opencv2/objdetect/aruco_detector.hpp>
+#include <opencv2/objdetect/aruco_board.hpp>
 #include <iostream>
 #include <cstdlib>
 
@@ -40,7 +41,7 @@ void open_video_from_arg(const cv::String &video_input, \
 
     char* end = nullptr;
     int source = static_cast<int>(std::strtol(video_input.c_str(), &end, 10));
-    
+
     if (!end || end == video_input.c_str()) {
         std::cout << "Trying to open video URL " << video_input << "\n";
         in_video.open(video_input);
@@ -66,7 +67,7 @@ bool parse_video_in(cv::VideoCapture &in_video, const cv::CommandLineParser \
         }
 
         open_video_from_arg(video_input, in_video);
-        
+
     } else {
         std::cout << "Trying to open camera\n";
         in_video.open(0);
@@ -81,18 +82,18 @@ bool parse_video_in(cv::VideoCapture &in_video, const cv::CommandLineParser \
     return true;
 }
 
-void drawText(cv::InputOutputArray image, const std::string &name, 
+void drawText(cv::InputOutputArray image, const std::string &name,
     const double value, const cv::Point place)  {
-        
+
     cv::Scalar text_color = cv::Scalar(0, 252, 124);
 
     std::ostringstream vector_to_marker;
     vector_to_marker.str(std::string());
 
-    vector_to_marker << std::setprecision(4) 
+    vector_to_marker << std::setprecision(4)
         << name << ": " << std::setw(8) << value;
-    cv::putText(image, vector_to_marker.str(), place, cv::FONT_HERSHEY_SIMPLEX, 
-        0.6, text_color, 1, CV_AVX);
+    cv::putText(image, vector_to_marker.str(), place, cv::FONT_HERSHEY_SIMPLEX,
+        0.6, text_color, 1, cv::LINE_AA);
 }
 
 #endif

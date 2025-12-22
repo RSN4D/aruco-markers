@@ -8,7 +8,7 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in 
+ * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -22,9 +22,10 @@
  */
 
 #include <iostream>
-#include <opencv2/aruco.hpp>
+#include <opencv2/objdetect/aruco_detector.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
+#include <opencv2/calib3d.hpp>
 #include <vector>
 #include <iostream>
 #include <cstdlib>
@@ -36,11 +37,6 @@ void drawCubeWireframe(
     cv::InputOutputArray image, cv::InputArray camera_matrix,
     cv::InputArray dist_coeffs, cv::InputArray rvec, cv::InputArray tvec,
     float l
-);
-
-void drawText(
-    cv::InputOutputArray image, const std::string &name, const double value, 
-    const cv::Point place
 );
 
 
@@ -60,7 +56,7 @@ int main(int argc, char **argv) {
     }
 
     int wait_time = 10;
-    
+
     int dictionary_id = parser.get<int>("d");
     float marker_length_m = parser.get<float>("l");
     if (marker_length_m <= 0) {
@@ -70,21 +66,30 @@ int main(int argc, char **argv) {
 
     cv::Mat image, image_copy;
     cv::Mat camera_matrix, dist_coeffs;
-    
-    // Create the dictionary from the same dictionary the marker was generated.
-    cv::Ptr<cv::aruco::Dictionary> dictionary =
-        cv::aruco::getPredefinedDictionary( \
-        cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionary_id));
 
+    // Create the dictionary from the same dictionary the marker was generated.
+    cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(
+        static_cast<cv::aruco::PredefinedDictionaryType>(dictionary_id));
+
+    // Create detector
+    cv::aruco::ArucoDetector detector(dictionary);
 
     cv::FileStorage fs("../../calibration_params.yml", cv::FileStorage::READ);
     fs["camera_matrix"] >> camera_matrix;
     fs["distortion_coefficients"] >> dist_coeffs;
 
+    // Define object points for a single marker (centered at origin)
+    float half_size = marker_length_m / 2.0f;
+    std::vector<cv::Point3f> objPoints = {
+        cv::Point3f(-half_size,  half_size, 0),
+        cv::Point3f( half_size,  half_size, 0),
+        cv::Point3f( half_size, -half_size, 0),
+        cv::Point3f(-half_size, -half_size, 0)
+    };
 
     // Initialize a video writer to save the drawn cube.
-    int frame_width = in_video.get(cv::CAP_PROP_FRAME_WIDTH);
-    int frame_height = in_video.get(cv::CAP_PROP_FRAME_HEIGHT);
+    int frame_width = static_cast<int>(in_video.get(cv::CAP_PROP_FRAME_WIDTH));
+    int frame_height = static_cast<int>(in_video.get(cv::CAP_PROP_FRAME_HEIGHT));
     int fps = 30;
     int fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
     cv::VideoWriter video(
@@ -98,36 +103,35 @@ int main(int argc, char **argv) {
 
         std::vector<int> ids;
         std::vector<std::vector<cv::Point2f>> corners;
-        cv::aruco::detectMarkers(image, dictionary, corners, ids);
+        detector.detectMarkers(image, corners, ids);
 
 
         // If at least one marker is detected
         if (ids.size() > 0)
         {
             cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
-            
-            std::vector<cv::Vec3d> rvecs, tvecs;
-            cv::aruco::estimatePoseSingleMarkers(
-                corners, marker_length_m, camera_matrix, dist_coeffs,
-                rvecs, tvecs
-            );
 
-            // Draw axis for each marker
-            for (int i = 0; i < ids.size(); i++)
+            // Estimate pose for each marker
+            for (size_t i = 0; i < ids.size(); i++)
             {
+                cv::Vec3d rvec, tvec;
+                cv::solvePnP(objPoints, corners[i], camera_matrix, dist_coeffs, rvec, tvec);
+
                 drawCubeWireframe(
-                    image_copy, camera_matrix, dist_coeffs, rvecs[i], tvecs[i],
+                    image_copy, camera_matrix, dist_coeffs, rvec, tvec,
                     marker_length_m
                 );
 
-                // This section is going to print the data for the first the 
-                // detected marker. If you have more than a single marker, it is 
+                // This section is going to print the data for the first the
+                // detected marker. If you have more than a single marker, it is
                 // recommended to change the below section so that either you
                 // only print the data for a specific marker, or you print the
                 // data for each marker separately.
-                drawText(image_copy, "x", tvecs[0](0), cv::Point(10, 30));
-                drawText(image_copy, "y", tvecs[0](1), cv::Point(10, 50));
-                drawText(image_copy, "z", tvecs[0](2), cv::Point(10, 70));
+                if (i == 0) {
+                    drawText(image_copy, "x", tvec[0], cv::Point(10, 30));
+                    drawText(image_copy, "y", tvec[1], cv::Point(10, 50));
+                    drawText(image_copy, "z", tvec[2], cv::Point(10, 70));
+                }
             }
         }
 
@@ -150,7 +154,7 @@ void drawCubeWireframe(
     float l
 )
 {
-    float half_l = l / 2.0;
+    float half_l = l / 2.0f;
 
     // Project cube points
     std::vector<cv::Point3f> axis_points;

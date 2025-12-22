@@ -8,7 +8,7 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in 
+ * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -22,7 +22,8 @@
  */
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/aruco.hpp>
+#include <opencv2/objdetect/aruco_detector.hpp>
+#include <opencv2/calib3d.hpp>
 #include <iostream>
 #include <cstdlib>
 
@@ -61,15 +62,24 @@ int main(int argc, char **argv)
     std::ostringstream vector_to_marker;
 
     // Create the dictionary from the same dictionary the marker was generated.
-    cv::Ptr<cv::aruco::Dictionary> dictionary =
-        cv::aruco::getPredefinedDictionary( \
-        cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionary_id));
+    cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(
+        static_cast<cv::aruco::PredefinedDictionaryType>(dictionary_id));
 
+    // Create detector
+    cv::aruco::ArucoDetector detector(dictionary);
 
     cv::FileStorage fs("../../calibration_params.yml", cv::FileStorage::READ);
     fs["camera_matrix"] >> camera_matrix;
     fs["distortion_coefficients"] >> dist_coeffs;
 
+    // Define object points for a single marker (centered at origin)
+    float half_size = marker_length_m / 2.0f;
+    std::vector<cv::Point3f> objPoints = {
+        cv::Point3f(-half_size,  half_size, 0),
+        cv::Point3f( half_size,  half_size, 0),
+        cv::Point3f( half_size, -half_size, 0),
+        cv::Point3f(-half_size, -half_size, 0)
+    };
 
     while (in_video.grab())
     {
@@ -77,35 +87,38 @@ int main(int argc, char **argv)
         image.copyTo(image_copy);
 
         std::vector<int> ids;
-        std::vector<std::vector<cv::Point2f> > corners;
-        cv::aruco::detectMarkers(image, dictionary, corners, ids);
+        std::vector<std::vector<cv::Point2f>> corners;
+        detector.detectMarkers(image, corners, ids);
 
         // if at least one marker detected
         if (ids.size() > 0)
         {
             cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
 
-            std::vector<cv::Vec3d> rvecs, tvecs;
-            cv::aruco::estimatePoseSingleMarkers(corners, marker_length_m,
-                    camera_matrix, dist_coeffs, rvecs, tvecs);
-                    
-            std::cout << "Translation: " << tvecs[0]
-                << "\tRotation: " << rvecs[0] << "\n";
-            
-            // Draw axis for each marker
-            for(int i=0; i < ids.size(); i++)
+            // Estimate pose for each marker
+            for(size_t i = 0; i < ids.size(); i++)
             {
-                cv::aruco::drawAxis(image_copy, camera_matrix, dist_coeffs,
-                        rvecs[i], tvecs[i], 0.1);
+                cv::Vec3d rvec, tvec;
+                cv::solvePnP(objPoints, corners[i], camera_matrix, dist_coeffs, rvec, tvec);
 
-                // This section is going to print the data for the first the 
-                // detected marker. If you have more than a single marker, it is 
+                if (i == 0) {
+                    std::cout << "Translation: " << tvec
+                        << "\tRotation: " << rvec << "\n";
+                }
+
+                // Draw axis for each marker
+                cv::drawFrameAxes(image_copy, camera_matrix, dist_coeffs, rvec, tvec, 0.1f);
+
+                // This section is going to print the data for the first the
+                // detected marker. If you have more than a single marker, it is
                 // recommended to change the below section so that either you
                 // only print the data for a specific marker, or you print the
                 // data for each marker separately.
-                drawText(image_copy, "x", tvecs[0](0), cv::Point(10, 30));
-                drawText(image_copy, "y", tvecs[0](1), cv::Point(10, 50));
-                drawText(image_copy, "z", tvecs[0](2), cv::Point(10, 70));
+                if (i == 0) {
+                    drawText(image_copy, "x", tvec[0], cv::Point(10, 30));
+                    drawText(image_copy, "y", tvec[1], cv::Point(10, 50));
+                    drawText(image_copy, "z", tvec[2], cv::Point(10, 70));
+                }
             }
         }
 

@@ -1,25 +1,21 @@
-cmake_minimum_required(VERSION 3.16.3)
-project(detect_markers)
+cmake_minimum_required(VERSION 3.16)
+project(detect_markers_proj LANGUAGES CXX)
 
-set (CMAKE_CXX_STANDARD 11)
-find_package(OpenCV REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${OPENCV_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/../common/include)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs highgui objdetect videoio)
 
-link_directories(${OpenCV_LIBRARY_DIRS})
+add_executable(detect_markers src/main.cpp)
+target_include_directories(detect_markers PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/include
+)
+target_link_libraries(detect_markers PRIVATE ${OpenCV_LIBRARIES})
 
-set(detect_markers_src
-    src/main.cpp
-   )
-add_executable(detect_markers ${detect_markers_src})
-target_link_libraries(detect_markers
-    ${OpenCV_LIBRARIES}
-    )
-
-target_compile_options(detect_markers
-    PRIVATE -O3 -std=c++11
-    )
-
-
+# Platform-specific optimizations
+if(MSVC)
+    target_compile_options(detect_markers PRIVATE /O2)
+else()
+    target_compile_options(detect_markers PRIVATE -O3)
+endif()

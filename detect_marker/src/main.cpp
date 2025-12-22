@@ -8,7 +8,7 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in 
+ * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -22,7 +22,7 @@
  */
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/aruco.hpp>
+#include <opencv2/objdetect/aruco_detector.hpp>
 #include <iostream>
 #include <cstdlib>
 
@@ -49,21 +49,22 @@ int main(int argc, char **argv)
     int wait_time = 10;
 
     // Create the dictionary from the same dictionary the marker was generated.
-    cv::Ptr<cv::aruco::Dictionary> dictionary =
-        cv::aruco::getPredefinedDictionary( \
-        cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionary_id));
+    cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(
+        static_cast<cv::aruco::PredefinedDictionaryType>(dictionary_id));
 
+    // Create detector with default parameters
+    cv::aruco::ArucoDetector detector(dictionary);
 
     // Process the video
     while (in_video.grab()) {
         cv::Mat image, image_copy;
         in_video.retrieve(image);
         image.copyTo(image_copy);
-        
+
         std::vector<int> ids;
         std::vector<std::vector<cv::Point2f>> corners;
-        cv::aruco::detectMarkers(image, dictionary, corners, ids);
-        
+        detector.detectMarkers(image, corners, ids);
+
         if (ids.size() > 0) {
             cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
         }

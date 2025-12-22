@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vcpkg list:*)",
+      "Bash(findstr:*)",
+      "Bash(where:*)",
+      "Bash(dir /s /b C:vcpkg.exe)",
+      "Bash(dir /s /b \"C:\\\\tools\\\\vcpkg.exe\")",
+      "Bash(cmd /c \"if exist C:\\\\vcpkg\\\\vcpkg.exe \\(C:\\\\vcpkg\\\\vcpkg.exe list\\) else \\(echo vcpkg not at C:\\\\vcpkg\\)\")",
+      "Bash(cmd /c \"dir /ad /s /b C:\\\\ 2>nul | findstr /i vcpkg\")",
+      "Bash(cmd /c \"vcpkg list\")",
+      "Bash(vcpkg search:*)",
+      "Bash(set VCPKG_ROOT=C:rsnvcpkg)",
+      "Bash(cmake:*)"
+    ]
+  }
+}

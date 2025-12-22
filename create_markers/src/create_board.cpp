@@ -36,11 +36,12 @@ or tort (including negligence or otherwise) arising in any way out of
 the use of this software, even if advised of the possibility of such damage.
 */
 
-// FDCL Note: This has been copied from the OpenCV libraries with some minor 
+// FDCL Note: This has been copied from the OpenCV libraries with some minor
 // changes.
 
 #include <opencv2/highgui.hpp>
-#include <opencv2/aruco.hpp>
+#include <opencv2/objdetect/aruco_detector.hpp>
+#include <opencv2/objdetect/aruco_board.hpp>
 
 using namespace cv;
 
@@ -95,15 +96,15 @@ int main(int argc, char *argv[]) {
     imageSize.height =
         markersY * (markerLength + markerSeparation) - markerSeparation + 2 * margins;
 
-    Ptr<aruco::Dictionary> dictionary =
-        aruco::getPredefinedDictionary(aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
+    aruco::Dictionary dictionary = aruco::getPredefinedDictionary(
+        static_cast<aruco::PredefinedDictionaryType>(dictionaryId));
 
-    Ptr<aruco::GridBoard> board = aruco::GridBoard::create(markersX, markersY, float(markerLength),
-                                                      float(markerSeparation), dictionary);
+    aruco::GridBoard board(Size(markersX, markersY), float(markerLength),
+                           float(markerSeparation), dictionary);
 
     // show created board
     Mat boardImage;
-    board->draw(imageSize, boardImage, margins, borderBits);
+    board.generateImage(imageSize, boardImage, margins, borderBits);
 
     if(showImage) {
         imshow("board", boardImage);

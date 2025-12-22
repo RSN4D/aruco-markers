@@ -36,12 +36,13 @@ or tort (including negligence or otherwise) arising in any way out of
 the use of this software, even if advised of the possibility of such damage.
 */
 
-// FDCL Note: This has been copied from the OpenCV libraries with some minor 
+// FDCL Note: This has been copied from the OpenCV libraries with some minor
 // changes.
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
-#include <opencv2/aruco.hpp>
+#include <opencv2/objdetect/aruco_detector.hpp>
+#include <opencv2/objdetect/aruco_board.hpp>
 #include <opencv2/imgproc.hpp>
 #include <vector>
 #include <iostream>
@@ -79,30 +80,30 @@ const char* keys  =
 
 /**
  */
-static bool readDetectorParameters(string filename, Ptr<aruco::DetectorParameters> &params) {
+static bool readDetectorParameters(string filename, aruco::DetectorParameters &params) {
     FileStorage fs(filename, FileStorage::READ);
     if(!fs.isOpened())
         return false;
-    fs["adaptiveThreshWinSizeMin"] >> params->adaptiveThreshWinSizeMin;
-    fs["adaptiveThreshWinSizeMax"] >> params->adaptiveThreshWinSizeMax;
-    fs["adaptiveThreshWinSizeStep"] >> params->adaptiveThreshWinSizeStep;
-    fs["adaptiveThreshConstant"] >> params->adaptiveThreshConstant;
-    fs["minMarkerPerimeterRate"] >> params->minMarkerPerimeterRate;
-    fs["maxMarkerPerimeterRate"] >> params->maxMarkerPerimeterRate;
-    fs["polygonalApproxAccuracyRate"] >> params->polygonalApproxAccuracyRate;
-    fs["minCornerDistanceRate"] >> params->minCornerDistanceRate;
-    fs["minDistanceToBorder"] >> params->minDistanceToBorder;
-    fs["minMarkerDistanceRate"] >> params->minMarkerDistanceRate;
-    fs["cornerRefinementMethod"] >> params->cornerRefinementMethod;
-    fs["cornerRefinementWinSize"] >> params->cornerRefinementWinSize;
-    fs["cornerRefinementMaxIterations"] >> params->cornerRefinementMaxIterations;
-    fs["cornerRefinementMinAccuracy"] >> params->cornerRefinementMinAccuracy;
-    fs["markerBorderBits"] >> params->markerBorderBits;
-    fs["perspectiveRemovePixelPerCell"] >> params->perspectiveRemovePixelPerCell;
-    fs["perspectiveRemoveIgnoredMarginPerCell"] >> params->perspectiveRemoveIgnoredMarginPerCell;
-    fs["maxErroneousBitsInBorderRate"] >> params->maxErroneousBitsInBorderRate;
-    fs["minOtsuStdDev"] >> params->minOtsuStdDev;
-    fs["errorCorrectionRate"] >> params->errorCorrectionRate;
+    fs["adaptiveThreshWinSizeMin"] >> params.adaptiveThreshWinSizeMin;
+    fs["adaptiveThreshWinSizeMax"] >> params.adaptiveThreshWinSizeMax;
+    fs["adaptiveThreshWinSizeStep"] >> params.adaptiveThreshWinSizeStep;
+    fs["adaptiveThreshConstant"] >> params.adaptiveThreshConstant;
+    fs["minMarkerPerimeterRate"] >> params.minMarkerPerimeterRate;
+    fs["maxMarkerPerimeterRate"] >> params.maxMarkerPerimeterRate;
+    fs["polygonalApproxAccuracyRate"] >> params.polygonalApproxAccuracyRate;
+    fs["minCornerDistanceRate"] >> params.minCornerDistanceRate;
+    fs["minDistanceToBorder"] >> params.minDistanceToBorder;
+    fs["minMarkerDistanceRate"] >> params.minMarkerDistanceRate;
+    fs["cornerRefinementMethod"] >> params.cornerRefinementMethod;
+    fs["cornerRefinementWinSize"] >> params.cornerRefinementWinSize;
+    fs["cornerRefinementMaxIterations"] >> params.cornerRefinementMaxIterations;
+    fs["cornerRefinementMinAccuracy"] >> params.cornerRefinementMinAccuracy;
+    fs["markerBorderBits"] >> params.markerBorderBits;
+    fs["perspectiveRemovePixelPerCell"] >> params.perspectiveRemovePixelPerCell;
+    fs["perspectiveRemoveIgnoredMarginPerCell"] >> params.perspectiveRemoveIgnoredMarginPerCell;
+    fs["maxErroneousBitsInBorderRate"] >> params.maxErroneousBitsInBorderRate;
+    fs["minOtsuStdDev"] >> params.minOtsuStdDev;
+    fs["errorCorrectionRate"] >> params.errorCorrectionRate;
     return true;
 }
 
@@ -130,7 +131,7 @@ static bool saveCameraParams(const string &filename, Size imageSize, float aspec
     if(flags & CALIB_FIX_ASPECT_RATIO) fs << "aspectRatio" << aspectRatio;
 
     if(flags != 0) {
-        sprintf(buf, "flags: %s%s%s%s",
+        snprintf(buf, sizeof(buf), "flags: %s%s%s%s",
                 flags & CALIB_USE_INTRINSIC_GUESS ? "+use_intrinsic_guess" : "",
                 flags & CALIB_FIX_ASPECT_RATIO ? "+fix_aspectRatio" : "",
                 flags & CALIB_FIX_PRINCIPAL_POINT ? "+fix_principal_point" : "",
@@ -176,7 +177,7 @@ int main(int argc, char *argv[]) {
     if(parser.get<bool>("zt")) calibrationFlags |= CALIB_ZERO_TANGENT_DIST;
     if(parser.get<bool>("pc")) calibrationFlags |= CALIB_FIX_PRINCIPAL_POINT;
 
-    Ptr<aruco::DetectorParameters> detectorParams = aruco::DetectorParameters::create();
+    aruco::DetectorParameters detectorParams;
     if(parser.has("dp")) {
         bool readOk = readDetectorParameters(parser.get<string>("dp"), detectorParams);
         if(!readOk) {
@@ -208,7 +209,7 @@ int main(int argc, char *argv[]) {
         videoInput = video;
         opened = inputVideo.open(video);
     } else {
-        videoInput = camId;
+        videoInput = to_string(camId);
         opened = inputVideo.open(camId);
     }
 
@@ -217,13 +218,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    Ptr<aruco::Dictionary> dictionary =
-        aruco::getPredefinedDictionary(aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
+    aruco::Dictionary dictionary = aruco::getPredefinedDictionary(
+        static_cast<aruco::PredefinedDictionaryType>(dictionaryId));
 
-    // create board object
-    Ptr<aruco::GridBoard> gridboard =
-            aruco::GridBoard::create(markersX, markersY, markerLength, markerSeparation, dictionary);
-    Ptr<aruco::Board> board = gridboard.staticCast<aruco::Board>();
+    // Create board object
+    aruco::GridBoard gridboard(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
+
+    // Create detector
+    aruco::ArucoDetector detector(dictionary, detectorParams);
 
     // collected frames for calibration
     vector< vector< vector< Point2f > > > allCorners;
@@ -238,10 +240,12 @@ int main(int argc, char *argv[]) {
         vector< vector< Point2f > > corners, rejected;
 
         // detect markers
-        aruco::detectMarkers(image, dictionary, corners, ids, detectorParams, rejected);
+        detector.detectMarkers(image, corners, ids, rejected);
 
         // refind strategy to detect more markers
-        if(refindStrategy) aruco::refineDetectedMarkers(image, board, corners, ids, rejected);
+        if(refindStrategy) {
+            detector.refineDetectedMarkers(image, gridboard, corners, ids, rejected);
+        }
 
         // draw results
         image.copyTo(imageCopy);
@@ -286,10 +290,26 @@ int main(int argc, char *argv[]) {
             allIdsConcatenated.push_back(allIds[i][j]);
         }
     }
-    // calibrate camera
-    repError = aruco::calibrateCameraAruco(allCornersConcatenated, allIdsConcatenated,
-                                           markerCounterPerFrame, board, imgSize, cameraMatrix,
-                                           distCoeffs, rvecs, tvecs, calibrationFlags);
+
+    // Get object and image points for calibration
+    vector<vector<Point3f>> objPoints;
+    vector<vector<Point2f>> imgPoints;
+
+    for (size_t frame = 0; frame < allCorners.size(); frame++) {
+        vector<Point3f> objPts;
+        vector<Point2f> imgPts;
+
+        gridboard.matchImagePoints(allCorners[frame], allIds[frame], objPts, imgPts);
+
+        if (!objPts.empty()) {
+            objPoints.push_back(objPts);
+            imgPoints.push_back(imgPts);
+        }
+    }
+
+    // calibrate camera using standard calibrateCamera
+    repError = calibrateCamera(objPoints, imgPoints, imgSize, cameraMatrix,
+                               distCoeffs, rvecs, tvecs, calibrationFlags);
 
     bool saveOk = saveCameraParams(outputFile, imgSize, aspectRatio, calibrationFlags, cameraMatrix,
                                    distCoeffs, repError);

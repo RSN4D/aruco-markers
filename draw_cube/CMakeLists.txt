@@ -1,25 +1,21 @@
-cmake_minimum_required(VERSION 3.16.3)
-project(draw_cube)
+cmake_minimum_required(VERSION 3.16)
+project(draw_cube_proj LANGUAGES CXX)
 
-set (CMAKE_CXX_STANDARD 11)
-find_package(OpenCV REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${OPENCV_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/../common/include)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs highgui calib3d objdetect videoio)
 
-link_directories(${OpenCV_LIBRARY_DIRS})
+add_executable(draw_cube src/main.cpp)
+target_include_directories(draw_cube PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/include
+)
+target_link_libraries(draw_cube PRIVATE ${OpenCV_LIBRARIES})
 
-set(draw_cube_src
-    src/main.cpp
-   )
-add_executable(draw_cube ${draw_cube_src})
-target_link_libraries(draw_cube
-    ${OpenCV_LIBRARIES}
-    )
-
-target_compile_options(draw_cube
-    PRIVATE -O3 -std=c++11
-    )
-
-
+# Platform-specific optimizations
+if(MSVC)
+    target_compile_options(draw_cube PRIVATE /O2)
+else()
+    target_compile_options(draw_cube PRIVATE -O3)
+endif()
