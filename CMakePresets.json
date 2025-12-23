@@ -13,7 +13,8 @@
                 "CMAKE_TOOLCHAIN_FILE": {
                     "type": "FILEPATH",
                     "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-                }
+                },
+                "VCPKG_MANIFEST_MODE": "ON"
             }
         },
         {
@@ -28,7 +29,8 @@
             },
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BUILD_GUI_APP": "ON"
             }
         },
         {
@@ -43,7 +45,8 @@
             },
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_GUI_APP": "ON"
             }
         },
         {
@@ -54,7 +57,24 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build-ninja",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_GUI_APP": "ON"
+            }
+        },
+        {
+            "name": "windows-x64-release-cli-only",
+            "displayName": "Windows x64 Release (CLI only)",
+            "description": "Windows x64 Release build without GUI (no ImGui dependency)",
+            "inherits": "vcpkg-base",
+            "generator": "Visual Studio 17 2022",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_GUI_APP": "OFF"
             }
         }
     ],
@@ -72,6 +92,11 @@
         {
             "name": "windows-x64-release-ninja",
             "configurePreset": "windows-x64-release-ninja"
+        },
+        {
+            "name": "windows-x64-release-cli-only",
+            "configurePreset": "windows-x64-release-cli-only",
+            "configuration": "Release"
         }
     ]
 }

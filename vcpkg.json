@@ -1,0 +1,15 @@
+{
+    "name": "aruco-markers",
+    "version": "1.0.0",
+    "description": "ArUco marker detection and pose estimation tools with ImGui GUI",
+    "dependencies": [
+        {
+            "name": "opencv4",
+            "features": ["contrib"]
+        },
+        {
+            "name": "imgui",
+            "features": ["dx11-binding", "win32-binding"]
+        }
+    ]
+}
