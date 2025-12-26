@@ -12,9 +12,9 @@ target_include_directories(camera_calibration PRIVATE
 )
 target_link_libraries(camera_calibration PRIVATE ${OpenCV_LIBRARIES})
 
-# Platform-specific optimizations
+# Platform-specific optimizations (Release only)
 if(MSVC)
-    target_compile_options(camera_calibration PRIVATE /O2)
+    target_compile_options(camera_calibration PRIVATE $<$<CONFIG:Release>:/O2>)
 else()
-    target_compile_options(camera_calibration PRIVATE -O3)
+    target_compile_options(camera_calibration PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()

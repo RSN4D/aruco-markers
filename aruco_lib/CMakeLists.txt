@@ -42,11 +42,11 @@ if(WIN32)
     target_link_libraries(aruco_lib PRIVATE strmiids ole32)
 endif()
 
-# Platform optimizations
+# Platform optimizations (Release only)
 if(MSVC)
-    target_compile_options(aruco_lib PRIVATE /O2)
+    target_compile_options(aruco_lib PRIVATE $<$<CONFIG:Release>:/O2>)
 else()
-    target_compile_options(aruco_lib PRIVATE -O3)
+    target_compile_options(aruco_lib PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()
 
 # Set folder for IDE

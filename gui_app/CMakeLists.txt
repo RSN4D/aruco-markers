@@ -54,9 +54,9 @@ target_link_libraries(aruco_gui PRIVATE
     comdlg32
 )
 
-# MSVC specific settings
+# MSVC specific settings (Release only)
 if(MSVC)
-    target_compile_options(aruco_gui PRIVATE /O2)
+    target_compile_options(aruco_gui PRIVATE $<$<CONFIG:Release>:/O2>)
 endif()
 
 # Copy test data and calibration files to output directory

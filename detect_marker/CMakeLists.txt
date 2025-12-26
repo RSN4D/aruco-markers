@@ -13,9 +13,9 @@ target_include_directories(detect_markers PRIVATE
 )
 target_link_libraries(detect_markers PRIVATE ${OpenCV_LIBRARIES})
 
-# Platform-specific optimizations
+# Platform-specific optimizations (Release only)
 if(MSVC)
-    target_compile_options(detect_markers PRIVATE /O2)
+    target_compile_options(detect_markers PRIVATE $<$<CONFIG:Release>:/O2>)
 else()
-    target_compile_options(detect_markers PRIVATE -O3)
+    target_compile_options(detect_markers PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()

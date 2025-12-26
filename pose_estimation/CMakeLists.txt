@@ -13,9 +13,9 @@ target_include_directories(pose_estimation PRIVATE
 )
 target_link_libraries(pose_estimation PRIVATE ${OpenCV_LIBRARIES})
 
-# Platform-specific optimizations
+# Platform-specific optimizations (Release only)
 if(MSVC)
-    target_compile_options(pose_estimation PRIVATE /O2)
+    target_compile_options(pose_estimation PRIVATE $<$<CONFIG:Release>:/O2>)
 else()
-    target_compile_options(pose_estimation PRIVATE -O3)
+    target_compile_options(pose_estimation PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()

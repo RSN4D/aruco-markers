@@ -13,9 +13,9 @@ target_include_directories(draw_cube PRIVATE
 )
 target_link_libraries(draw_cube PRIVATE ${OpenCV_LIBRARIES})
 
-# Platform-specific optimizations
+# Platform-specific optimizations (Release only)
 if(MSVC)
-    target_compile_options(draw_cube PRIVATE /O2)
+    target_compile_options(draw_cube PRIVATE $<$<CONFIG:Release>:/O2>)
 else()
-    target_compile_options(draw_cube PRIVATE -O3)
+    target_compile_options(draw_cube PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()
