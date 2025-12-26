@@ -24,7 +24,9 @@
       "Bash(cmd /c:*)",
       "Bash(C:/rsn/vcpkg/vcpkg install imgui[dx11-binding]:x64-windows)",
       "Bash(del:*)",
-      "Bash(start \"\" \"D:\\\\GitHub\\\\aruco-markers\\\\build\\\\gui_app\\\\Release\\\\aruco_gui.exe\")"
+      "Bash(start \"\" \"D:\\\\GitHub\\\\aruco-markers\\\\build\\\\gui_app\\\\Release\\\\aruco_gui.exe\")",
+      "Bash(D:/GitHub/aruco-markers/build/create_markers/Release/generate_calibration_board.exe)",
+      "Bash(D:/GitHub/aruco-markers/build/create_markers/Release/generate_calibration_board.exe:*)"
     ]
   }
 }

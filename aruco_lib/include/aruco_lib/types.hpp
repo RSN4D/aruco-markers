@@ -50,6 +50,50 @@ struct BoardParams {
     int borderBits = 1;
 };
 
+// Paper format for calibration boards
+enum class PaperFormat {
+    A4,
+    Letter
+};
+
+// Paper format names for UI
+inline const char* PAPER_FORMAT_NAMES[] = {
+    "A4 (210 x 297 mm)",
+    "Letter (8.5 x 11 in)"
+};
+constexpr int PAPER_FORMAT_COUNT = 2;
+
+// Paper dimensions in mm
+inline const double PAPER_WIDTH_MM[] = { 210.0, 215.9 };
+inline const double PAPER_HEIGHT_MM[] = { 297.0, 279.4 };
+
+// Parameters for calibration board generation (print-ready)
+struct CalibrationBoardParams {
+    int dictionaryId = 16;
+    PaperFormat paperFormat = PaperFormat::A4;
+    int markersX = 5;
+    int markersY = 7;
+    int dpi = 300;
+    double marginMm = 10.0;
+    double markerRatio = 0.8;  // marker_size / (marker_size + separation)
+    int borderBits = 1;
+};
+
+// Result of calibration board generation with physical dimensions
+struct CalibrationBoardResult {
+    cv::Mat image;
+    double markerLengthMm = 0.0;
+    double separationMm = 0.0;
+    double boardWidthMm = 0.0;
+    double boardHeightMm = 0.0;
+    int pageWidthPx = 0;
+    int pageHeightPx = 0;
+
+    // Get dimensions in meters for calibration tool
+    double markerLengthMeters() const { return markerLengthMm / 1000.0; }
+    double separationMeters() const { return separationMm / 1000.0; }
+};
+
 // Parameters for camera calibration
 struct CalibrationParams {
     int dictionaryId = 16;
