@@ -39,7 +39,19 @@ struct MarkerParams {
     int borderBits = 1;
 };
 
-// Parameters for board generation
+// Board type selection
+enum class BoardType {
+    ArUco,
+    ChArUco
+};
+
+inline const char* BOARD_TYPE_NAMES[] = {
+    "ArUco Grid",
+    "ChArUco"
+};
+constexpr int BOARD_TYPE_COUNT = 2;
+
+// Parameters for ArUco board generation
 struct BoardParams {
     int dictionaryId = 16;
     int markersX = 4;
@@ -47,6 +59,17 @@ struct BoardParams {
     int markerLengthPixels = 200;
     int markerSeparationPixels = 100;
     int margins = 100;
+    int borderBits = 1;
+};
+
+// Parameters for ChArUco board generation (pixel-based)
+struct CharucoBoardParams {
+    int dictionaryId = 16;
+    int squaresX = 5;       // Number of chessboard squares in X
+    int squaresY = 7;       // Number of chessboard squares in Y
+    int squareLengthPixels = 200;
+    int markerLengthPixels = 150;  // Must be less than squareLength
+    int margins = 50;
     int borderBits = 1;
 };
 
@@ -91,21 +114,23 @@ inline const double PAPER_HEIGHT_MM[] = {
 
 // Parameters for calibration board generation (print-ready)
 struct CalibrationBoardParams {
+    BoardType boardType = BoardType::ArUco;
     int dictionaryId = 16;
     PaperFormat paperFormat = PaperFormat::A4;
-    int markersX = 5;
-    int markersY = 7;
+    int squaresX = 5;       // For ArUco: markersX, for ChArUco: squaresX
+    int squaresY = 7;       // For ArUco: markersY, for ChArUco: squaresY
     int dpi = 300;
     double marginMm = 10.0;
-    double markerRatio = 0.8;  // marker_size / (marker_size + separation)
+    double markerRatio = 0.8;  // For ArUco: marker/(marker+sep), for ChArUco: marker/square
     int borderBits = 1;
 };
 
 // Result of calibration board generation with physical dimensions
 struct CalibrationBoardResult {
     cv::Mat image;
+    BoardType boardType = BoardType::ArUco;
     double markerLengthMm = 0.0;
-    double separationMm = 0.0;
+    double squareLengthMm = 0.0;   // For ChArUco: square size; For ArUco: used as separation
     double boardWidthMm = 0.0;
     double boardHeightMm = 0.0;
     int pageWidthPx = 0;
@@ -113,27 +138,41 @@ struct CalibrationBoardResult {
 
     // Get dimensions in meters for calibration tool
     double markerLengthMeters() const { return markerLengthMm / 1000.0; }
-    double separationMeters() const { return separationMm / 1000.0; }
+    double squareLengthMeters() const { return squareLengthMm / 1000.0; }
+    // For ArUco compatibility (separation = squareLength for ArUco boards)
+    double separationMm() const { return squareLengthMm; }
+    double separationMeters() const { return squareLengthMm / 1000.0; }
 };
 
 // Parameters for camera calibration
 struct CalibrationParams {
+    BoardType boardType = BoardType::ArUco;
     int dictionaryId = 16;
-    int markersX = 4;
-    int markersY = 2;
+    int squaresX = 5;           // For ArUco: markersX, for ChArUco: squaresX
+    int squaresY = 7;           // For ArUco: markersY, for ChArUco: squaresY
     float markerLengthMeters = 0.04f;
-    float markerSeparationMeters = 0.02f;
+    float squareLengthMeters = 0.05f;  // For ChArUco: square size; For ArUco: marker + separation
     bool refindStrategy = false;
     bool zeroTangentDist = false;
     bool fixPrincipalPoint = false;
     float aspectRatio = 1.0f;
     bool fixAspectRatio = false;
+
+    // Convenience for ArUco compatibility
+    float markerSeparationMeters() const {
+        return squareLengthMeters - markerLengthMeters;
+    }
 };
 
 // Parameters for pose estimation and cube rendering
 struct PoseParams {
+    BoardType boardType = BoardType::ArUco;
     int dictionaryId = 16;
-    float markerLengthMeters = 0.05f;
+    float markerLengthMeters = 0.04f;
+    // ChArUco board params (for board pose estimation)
+    int squaresX = 5;
+    int squaresY = 7;
+    float squareLengthMeters = 0.05f;  // Must be > markerLengthMeters for ChArUco
 };
 
 // Camera intrinsic parameters
@@ -152,6 +191,13 @@ struct DetectionResult {
     std::vector<cv::Vec3d> rvecs;
     std::vector<cv::Vec3d> tvecs;
     bool hasPose = false;
+    // ChArUco-specific: board pose (single rvec/tvec for whole board)
+    cv::Vec3d boardRvec;
+    cv::Vec3d boardTvec;
+    bool hasBoardPose = false;
+    // ChArUco corner data
+    std::vector<int> charucoIds;
+    std::vector<cv::Point2f> charucoCorners;
 };
 
 // Video source type enumeration

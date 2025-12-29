@@ -32,11 +32,16 @@ private:
     PoseParams params_;
     CameraParams cameraParams_;
     std::unique_ptr<cv::aruco::ArucoDetector> detector_;
+    std::unique_ptr<cv::aruco::CharucoBoard> charucoBoard_;
+    std::unique_ptr<cv::aruco::CharucoDetector> charucoDetector_;
     std::vector<cv::Point3f> objectPoints_;
     bool configured_ = false;
 
     void initDetector();
     void initObjectPoints();
+
+    DetectionResult estimatePoseAruco(const cv::Mat& frame);
+    DetectionResult estimatePoseCharuco(const cv::Mat& frame);
 };
 
 } // namespace aruco_lib

@@ -50,16 +50,30 @@ public:
 private:
     CalibrationParams params_;
     cv::aruco::DetectorParameters detectorParams_;
-    std::unique_ptr<cv::aruco::GridBoard> board_;
+    std::unique_ptr<cv::aruco::GridBoard> arucoBoard_;
+    std::unique_ptr<cv::aruco::CharucoBoard> charucoBoard_;
     std::unique_ptr<cv::aruco::ArucoDetector> detector_;
+    std::unique_ptr<cv::aruco::CharucoDetector> charucoDetector_;
 
+    // ArUco calibration data
     std::vector<std::vector<std::vector<cv::Point2f>>> allCorners_;
     std::vector<std::vector<int>> allIds_;
+
+    // ChArUco calibration data
+    std::vector<std::vector<cv::Point2f>> allCharucoCorners_;
+    std::vector<std::vector<int>> allCharucoIds_;
+
     cv::Size imageSize_;
     CameraParams cameraParams_;
     double reprojectionError_ = 0.0;
 
     void initBoard();
+    bool processFrameAruco(const cv::Mat& frame, cv::Mat& outputFrame);
+    bool processFrameCharuco(const cv::Mat& frame, cv::Mat& outputFrame);
+    bool captureFrameAruco(const cv::Mat& frame);
+    bool captureFrameCharuco(const cv::Mat& frame);
+    bool calibrateAruco();
+    bool calibrateCharuco();
 };
 
 } // namespace aruco_lib

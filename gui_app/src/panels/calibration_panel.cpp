@@ -17,26 +17,46 @@ void CalibrationPanel::render() {
     // Board configuration
     ImGui::Text("Board Configuration:");
 
+    // Board type selection
+    ImGui::Text("Board Type:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(150);
+    int boardTypeIdx = static_cast<int>(params_.boardType);
+    if (ImGui::Combo("##boardtype", &boardTypeIdx, aruco_lib::BOARD_TYPE_NAMES, aruco_lib::BOARD_TYPE_COUNT)) {
+        params_.boardType = static_cast<aruco_lib::BoardType>(boardTypeIdx);
+        calibrator_.configure(params_);
+    }
+
+    bool isCharuco = (params_.boardType == aruco_lib::BoardType::ChArUco);
+
     if (renderDictionaryCombo("Dictionary", params_.dictionaryId)) {
         calibrator_.configure(params_);
     }
 
-    ImGui::Text("Grid Size:");
+    ImGui::Text(isCharuco ? "Squares:" : "Markers:");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(80);
-    if (ImGui::InputInt("W##grid", &params_.markersX, 1, 1)) {
-        params_.markersX = std::clamp(params_.markersX, 1, 20);
+    if (ImGui::InputInt("W##grid", &params_.squaresX, 1, 1)) {
+        params_.squaresX = std::clamp(params_.squaresX, 2, 20);
     }
     ImGui::SameLine();
     ImGui::Text("x");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(80);
-    if (ImGui::InputInt("H##grid", &params_.markersY, 1, 1)) {
-        params_.markersY = std::clamp(params_.markersY, 1, 20);
+    if (ImGui::InputInt("H##grid", &params_.squaresY, 1, 1)) {
+        params_.squaresY = std::clamp(params_.squaresY, 2, 20);
     }
 
     if (renderFloatInput("Marker Length (m)", params_.markerLengthMeters, 0.001f, 1.0f)) {}
-    if (renderFloatInput("Separation (m)", params_.markerSeparationMeters, 0.001f, 1.0f)) {}
+    if (isCharuco) {
+        if (renderFloatInput("Square Length (m)", params_.squareLengthMeters, 0.001f, 1.0f)) {}
+    } else {
+        // For ArUco, separation = squareLength - markerLength
+        float separation = params_.squareLengthMeters - params_.markerLengthMeters;
+        if (renderFloatInput("Separation (m)", separation, 0.001f, 1.0f)) {
+            params_.squareLengthMeters = params_.markerLengthMeters + separation;
+        }
+    }
 
     ImGui::Separator();
 
@@ -155,8 +175,10 @@ void CalibrationPanel::processFrame(cv::Mat& frame) {
                 cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5,
                 cv::Scalar(255, 0, 0), 2);
 
+    bool isCharuco = (params_.boardType == aruco_lib::BoardType::ChArUco);
     if (detected) {
-        cv::putText(frame, "Board detected",
+        std::string msg = isCharuco ? "ChArUco corners detected" : "Board detected";
+        cv::putText(frame, msg,
                     cv::Point(10, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5,
                     cv::Scalar(0, 255, 0), 2);
     }

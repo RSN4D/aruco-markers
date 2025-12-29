@@ -140,6 +140,16 @@ void BoardPanel::renderCustomBoardMode() {
 void BoardPanel::renderCalibrationBoardMode() {
     bool paramsChanged = false;
 
+    // Board type selection
+    ImGui::Text("Board Type:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(150);
+    int boardTypeIdx = static_cast<int>(calibParams_.boardType);
+    if (ImGui::Combo("##boardtype", &boardTypeIdx, aruco_lib::BOARD_TYPE_NAMES, aruco_lib::BOARD_TYPE_COUNT)) {
+        calibParams_.boardType = static_cast<aruco_lib::BoardType>(boardTypeIdx);
+        paramsChanged = true;
+    }
+
     // Dictionary selection
     if (renderDictionaryCombo("Dictionary", calibParams_.dictionaryId)) {
         paramsChanged = true;
@@ -155,20 +165,21 @@ void BoardPanel::renderCalibrationBoardMode() {
         paramsChanged = true;
     }
 
-    // Grid size
-    ImGui::Text("Grid Size:");
+    // Grid size label depends on board type
+    bool isCharuco = (calibParams_.boardType == aruco_lib::BoardType::ChArUco);
+    ImGui::Text(isCharuco ? "Squares:" : "Markers:");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(80);
-    if (ImGui::InputInt("W##calibgrid", &calibParams_.markersX, 1, 1)) {
-        calibParams_.markersX = std::clamp(calibParams_.markersX, 1, 20);
+    if (ImGui::InputInt("W##calibgrid", &calibParams_.squaresX, 1, 1)) {
+        calibParams_.squaresX = std::clamp(calibParams_.squaresX, 2, 20);
         paramsChanged = true;
     }
     ImGui::SameLine();
     ImGui::Text("x");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(80);
-    if (ImGui::InputInt("H##calibgrid", &calibParams_.markersY, 1, 1)) {
-        calibParams_.markersY = std::clamp(calibParams_.markersY, 1, 20);
+    if (ImGui::InputInt("H##calibgrid", &calibParams_.squaresY, 1, 1)) {
+        calibParams_.squaresY = std::clamp(calibParams_.squaresY, 2, 20);
         paramsChanged = true;
     }
 
@@ -203,7 +214,11 @@ void BoardPanel::renderCalibrationBoardMode() {
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Ratio of marker size to cell size.\nHigher = larger markers, smaller gaps.");
+        if (isCharuco) {
+            ImGui::SetTooltip("Ratio of marker size to square size.\nHigher = larger markers within each square.");
+        } else {
+            ImGui::SetTooltip("Ratio of marker size to cell size.\nHigher = larger markers, smaller gaps.");
+        }
     }
 
     // Border bits
@@ -219,7 +234,7 @@ void BoardPanel::renderCalibrationBoardMode() {
     }
 
     // Show calculated physical dimensions
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Physical Dimensions (for Calibration tool):");
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Physical Dimensions (for Calibration/Pose tool):");
 
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(1);
@@ -227,7 +242,11 @@ void BoardPanel::renderCalibrationBoardMode() {
     ImGui::Text("%s", oss.str().c_str());
 
     oss.str(""); oss.clear();
-    oss << "  Separation: " << calibResult_.separationMm << " mm";
+    if (isCharuco) {
+        oss << "  Square Length: " << calibResult_.squareLengthMm << " mm";
+    } else {
+        oss << "  Separation: " << calibResult_.separationMm() << " mm";
+    }
     ImGui::Text("%s", oss.str().c_str());
 
     oss.str(""); oss.clear();
@@ -241,15 +260,23 @@ void BoardPanel::renderCalibrationBoardMode() {
     ImGui::Separator();
 
     // Show calibration tool parameters
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.4f, 1.0f), "Calibration Tool Parameters:");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.4f, 1.0f), "Calibration/Pose Tool Parameters:");
 
     oss.str(""); oss.clear();
     oss << std::fixed << std::setprecision(6);
-    oss << "  -w=" << calibParams_.markersX
-        << " -h=" << calibParams_.markersY
-        << " -l=" << calibResult_.markerLengthMeters()
-        << " -s=" << calibResult_.separationMeters()
-        << " -d=" << calibParams_.dictionaryId;
+    if (isCharuco) {
+        oss << "  squaresX=" << calibParams_.squaresX
+            << " squaresY=" << calibParams_.squaresY
+            << "\n  squareLength=" << calibResult_.squareLengthMeters() << " m"
+            << "\n  markerLength=" << calibResult_.markerLengthMeters() << " m"
+            << "\n  dictionary=" << calibParams_.dictionaryId;
+    } else {
+        oss << "  -w=" << calibParams_.squaresX
+            << " -h=" << calibParams_.squaresY
+            << " -l=" << calibResult_.markerLengthMeters()
+            << " -s=" << calibResult_.separationMeters()
+            << " -d=" << calibParams_.dictionaryId;
+    }
 
     ImGui::TextWrapped("%s", oss.str().c_str());
 
@@ -257,11 +284,19 @@ void BoardPanel::renderCalibrationBoardMode() {
     if (ImGui::Button("Copy Parameters")) {
         oss.str(""); oss.clear();
         oss << std::fixed << std::setprecision(6);
-        oss << "-w=" << calibParams_.markersX
-            << " -h=" << calibParams_.markersY
-            << " -l=" << calibResult_.markerLengthMeters()
-            << " -s=" << calibResult_.separationMeters()
-            << " -d=" << calibParams_.dictionaryId;
+        if (isCharuco) {
+            oss << "squaresX=" << calibParams_.squaresX
+                << " squaresY=" << calibParams_.squaresY
+                << " squareLength=" << calibResult_.squareLengthMeters()
+                << " markerLength=" << calibResult_.markerLengthMeters()
+                << " dictionary=" << calibParams_.dictionaryId;
+        } else {
+            oss << "-w=" << calibParams_.squaresX
+                << " -h=" << calibParams_.squaresY
+                << " -l=" << calibResult_.markerLengthMeters()
+                << " -s=" << calibResult_.separationMeters()
+                << " -d=" << calibParams_.dictionaryId;
+        }
         ImGui::SetClipboardText(oss.str().c_str());
     }
     ImGui::SameLine();

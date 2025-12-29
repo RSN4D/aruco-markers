@@ -14,18 +14,58 @@ void PosePanel::render() {
     ImGui::Text("Pose Estimation");
     ImGui::Separator();
 
+    // Helper to safely reconfigure while video may be running
+    auto safeReconfigure = [this]() {
+        if (!calibrationLoaded_) return;
+        bool wasRunning = isRunning_;
+        if (wasRunning) stopEstimation();
+        estimator_.configure(params_, cameraParams_);
+        if (wasRunning) startEstimation();
+    };
+
+    // Board type selection
+    ImGui::Text("Board Type:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(150);
+    int boardTypeIdx = static_cast<int>(params_.boardType);
+    if (ImGui::Combo("##boardtype", &boardTypeIdx, aruco_lib::BOARD_TYPE_NAMES, aruco_lib::BOARD_TYPE_COUNT)) {
+        params_.boardType = static_cast<aruco_lib::BoardType>(boardTypeIdx);
+        safeReconfigure();
+    }
+
+    bool isCharuco = (params_.boardType == aruco_lib::BoardType::ChArUco);
+
     // Dictionary selection
     if (renderDictionaryCombo("Dictionary", params_.dictionaryId)) {
-        if (calibrationLoaded_) {
-            estimator_.configure(params_, cameraParams_);
+        safeReconfigure();
+    }
+
+    // ChArUco board parameters
+    if (isCharuco) {
+        ImGui::Text("Board Squares:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(80);
+        if (ImGui::InputInt("W##squares", &params_.squaresX, 1, 1)) {
+            params_.squaresX = std::clamp(params_.squaresX, 2, 20);
+            safeReconfigure();
+        }
+        ImGui::SameLine();
+        ImGui::Text("x");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(80);
+        if (ImGui::InputInt("H##squares", &params_.squaresY, 1, 1)) {
+            params_.squaresY = std::clamp(params_.squaresY, 2, 20);
+            safeReconfigure();
+        }
+
+        if (renderFloatInput("Square Length (m)", params_.squareLengthMeters, 0.001f, 1.0f)) {
+            safeReconfigure();
         }
     }
 
     // Marker length
     if (renderFloatInput("Marker Length (m)", params_.markerLengthMeters, 0.001f, 1.0f)) {
-        if (calibrationLoaded_) {
-            estimator_.configure(params_, cameraParams_);
-        }
+        safeReconfigure();
     }
 
     ImGui::Separator();
@@ -90,7 +130,26 @@ void PosePanel::render() {
     }
 
     // Pose data display
-    if (lastResult_.hasPose && !lastResult_.ids.empty()) {
+    if (lastResult_.hasBoardPose) {
+        // ChArUco board pose (at top-left corner origin)
+        ImGui::Separator();
+        ImGui::Text("ChArUco Board Pose (top-left corner origin):");
+
+        const cv::Vec3d& tvec = lastResult_.boardTvec;
+        const cv::Vec3d& rvec = lastResult_.boardRvec;
+
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(4);
+        oss << "X: " << tvec[0] << " m  Y: " << tvec[1] << " m  Z: " << tvec[2] << " m";
+        ImGui::Text("%s", oss.str().c_str());
+
+        oss.str("");
+        oss << "Rx: " << rvec[0] << "  Ry: " << rvec[1] << "  Rz: " << rvec[2];
+        ImGui::Text("%s", oss.str().c_str());
+
+        ImGui::Text("Charuco corners detected: %d", static_cast<int>(lastResult_.charucoIds.size()));
+    }
+    else if (lastResult_.hasPose && !lastResult_.ids.empty()) {
         ImGui::Separator();
         ImGui::Text("Pose Data (First Marker ID: %d):", lastResult_.ids[0]);
 
