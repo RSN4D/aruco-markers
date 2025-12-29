@@ -1,6 +1,7 @@
 // ArUco Markers GUI - Main Application
-// Based on Dear ImGui DirectX 11 example
+// Based on Dear ImGui DirectX 12 example
 
+#include "gui/dx12_backend.hpp"
 #include "gui/texture_manager.hpp"
 #include "gui/video_thread.hpp"
 #include "gui/panels/panel_base.hpp"
@@ -13,9 +14,10 @@
 
 #include <imgui.h>
 #include <imgui_impl_win32.h>
-#include <imgui_impl_dx11.h>
+#include <imgui_impl_dx12.h>
 
-#include <d3d11.h>
+#include <d3d12.h>
+#include <dxgi1_4.h>
 #include <tchar.h>
 #include <iostream>
 #include <memory>
@@ -23,11 +25,8 @@
 #include <string>
 
 // Data
-static ID3D11Device*            g_pd3dDevice = nullptr;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain*          g_pSwapChain = nullptr;
-static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
-static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
+static std::unique_ptr<gui::DX12Backend> g_backend;
+static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 
 // Application state
 static std::unique_ptr<gui::TextureManager> g_textureManager;
@@ -42,10 +41,6 @@ static int g_frameHeight = 0;
 static std::string g_statusMessage = "Ready";
 
 // Forward declarations
-bool CreateDeviceD3D(HWND hWnd);
-void CleanupDeviceD3D();
-void CreateRenderTarget();
-void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -56,12 +51,13 @@ int main(int, char**)
     // Create application window
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ArUco GUI", nullptr };
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"ArUco Markers GUI", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"ArUco Markers GUI (DX12)", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
 
-    // Initialize Direct3D
-    if (!CreateDeviceD3D(hwnd))
+    // Initialize Direct3D 12
+    g_backend = std::make_unique<gui::DX12Backend>();
+    if (!g_backend->initialize(hwnd, 1280, 800))
     {
-        CleanupDeviceD3D();
+        g_backend.reset();
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return 1;
     }
@@ -85,10 +81,18 @@ int main(int, char**)
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    // Get font descriptor handle for ImGui
+    ID3D12DescriptorHeap* srvHeap = g_backend->getSrvHeap();
+    D3D12_CPU_DESCRIPTOR_HANDLE fontCpuHandle = srvHeap->GetCPUDescriptorHandleForHeapStart();
+    D3D12_GPU_DESCRIPTOR_HANDLE fontGpuHandle = srvHeap->GetGPUDescriptorHandleForHeapStart();
+
+    ImGui_ImplDX12_Init(g_backend->getDevice(), gui::DX12Backend::NUM_BACK_BUFFERS,
+                        DXGI_FORMAT_R8G8B8A8_UNORM, srvHeap,
+                        fontCpuHandle, fontGpuHandle);
 
     // Initialize texture manager and video thread
-    g_textureManager = std::make_unique<gui::TextureManager>(g_pd3dDevice, g_pd3dDeviceContext);
+    g_textureManager = std::make_unique<gui::TextureManager>(g_backend.get());
     g_videoThread = std::make_unique<gui::VideoThread>();
 
     // Create panels
@@ -118,14 +122,15 @@ int main(int, char**)
         // Handle window resize
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0)
         {
-            CleanupRenderTarget();
-            g_pSwapChain->ResizeBuffers(0, g_ResizeWidth, g_ResizeHeight, DXGI_FORMAT_UNKNOWN, 0);
+            g_backend->resize(g_ResizeWidth, g_ResizeHeight);
             g_ResizeWidth = g_ResizeHeight = 0;
-            CreateRenderTarget();
         }
 
+        // Start frame
+        g_backend->beginFrame();
+
         // Start the Dear ImGui frame
-        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
@@ -234,12 +239,13 @@ int main(int, char**)
 
         // Rendering
         ImGui::Render();
-        const float clear_color_with_alpha[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
-        g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
-        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        g_pSwapChain->Present(1, 0); // Present with vsync
+        ID3D12GraphicsCommandList* cmdList = g_backend->getCommandList();
+        cmdList->SetDescriptorHeaps(1, &srvHeap);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmdList);
+
+        g_backend->endFrame();
+        g_backend->present();
     }
 
     // Cleanup panels
@@ -251,68 +257,16 @@ int main(int, char**)
     g_textureManager.reset();
 
     // Cleanup ImGui
-    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
-    CleanupDeviceD3D();
+    g_backend->shutdown();
+    g_backend.reset();
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
     return 0;
-}
-
-bool CreateDeviceD3D(HWND hWnd)
-{
-    // Setup swap chain
-    DXGI_SWAP_CHAIN_DESC sd;
-    ZeroMemory(&sd, sizeof(sd));
-    sd.BufferCount = 2;
-    sd.BufferDesc.Width = 0;
-    sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 60;
-    sd.BufferDesc.RefreshRate.Denominator = 1;
-    sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hWnd;
-    sd.SampleDesc.Count = 1;
-    sd.SampleDesc.Quality = 0;
-    sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-    UINT createDeviceFlags = 0;
-    D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
-    HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    if (res == DXGI_ERROR_UNSUPPORTED)
-        res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    if (res != S_OK)
-        return false;
-
-    CreateRenderTarget();
-    return true;
-}
-
-void CleanupDeviceD3D()
-{
-    CleanupRenderTarget();
-    if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
-    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = nullptr; }
-    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
-}
-
-void CreateRenderTarget()
-{
-    ID3D11Texture2D* pBackBuffer;
-    g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-    g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
-    pBackBuffer->Release();
-}
-
-void CleanupRenderTarget()
-{
-    if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
 }
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)

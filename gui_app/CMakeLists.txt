@@ -11,6 +11,7 @@ find_package(imgui CONFIG REQUIRED)
 # GUI source files
 set(GUI_SOURCES
     src/main.cpp
+    src/dx12_backend.cpp
     src/texture_manager.cpp
     src/video_thread.cpp
     src/panels/panel_base.cpp
@@ -23,6 +24,7 @@ set(GUI_SOURCES
 )
 
 set(GUI_HEADERS
+    include/gui/dx12_backend.hpp
     include/gui/texture_manager.hpp
     include/gui/video_thread.hpp
     include/gui/panels/panel_base.hpp
@@ -40,17 +42,18 @@ target_include_directories(aruco_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# DirectX 11 libraries
-set(DX11_LIBS
-    d3d11
+# DirectX 12 libraries
+set(DX12_LIBS
+    d3d12
     dxgi
+    dxguid
 )
 
 target_link_libraries(aruco_gui PRIVATE
     aruco_lib
     ${OpenCV_LIBRARIES}
     imgui::imgui
-    ${DX11_LIBS}
+    ${DX12_LIBS}
     comdlg32
 )
 
@@ -75,6 +78,7 @@ set_target_properties(aruco_gui PROPERTIES FOLDER "Applications")
 
 # Source group for Visual Studio
 source_group("Header Files\\gui" FILES
+    include/gui/dx12_backend.hpp
     include/gui/texture_manager.hpp
     include/gui/video_thread.hpp
 )

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d11.h>
+#include <d3d12.h>
 #include <wrl/client.h>
 #include <opencv2/opencv.hpp>
 #include <imgui.h>
@@ -11,16 +11,21 @@ namespace gui {
 
 using Microsoft::WRL::ComPtr;
 
+class DX12Backend;
+
 struct TextureHandle {
-    ComPtr<ID3D11Texture2D> texture;
-    ComPtr<ID3D11ShaderResourceView> srv;
+    ComPtr<ID3D12Resource> texture;
+    ComPtr<ID3D12Resource> uploadBuffer;
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = {};
+    UINT srvIndex = 0;
     int width = 0;
     int height = 0;
 };
 
 class TextureManager {
 public:
-    TextureManager(ID3D11Device* device, ID3D11DeviceContext* context);
+    TextureManager(DX12Backend* backend);
     ~TextureManager();
 
     // Create or update texture from OpenCV Mat
@@ -37,8 +42,7 @@ public:
     bool getTextureSize(const std::string& name, int& width, int& height) const;
 
 private:
-    ID3D11Device* device_;
-    ID3D11DeviceContext* context_;
+    DX12Backend* backend_;
     std::unordered_map<std::string, TextureHandle> textures_;
 
     bool createTexture(TextureHandle& handle, int width, int height);
