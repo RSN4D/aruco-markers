@@ -21,6 +21,7 @@ struct TextureHandle {
     UINT srvIndex = 0;
     int width = 0;
     int height = 0;
+    bool isInShaderResourceState = false;  // Track current resource state
 };
 
 class TextureManager {

@@ -34,6 +34,8 @@ public:
     int getWidth() const { return width_; }
     int getHeight() const { return height_; }
 
+    void waitForGpu();
+
 private:
     HWND hwnd_ = nullptr;
     int width_ = 0;
@@ -64,7 +66,6 @@ private:
     bool createCommandAllocatorsAndList();
     bool createFence();
 
-    void waitForGpu();
     void moveToNextFrame();
 };
 

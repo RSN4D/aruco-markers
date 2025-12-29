@@ -35,6 +35,8 @@ ImTextureID TextureManager::updateTexture(const std::string& name, const cv::Mat
 
     if (needsCreate) {
         if (it != textures_.end()) {
+            // Wait for GPU to finish using the old texture before releasing
+            backend_->waitForGpu();
             textures_.erase(it);
         }
 
@@ -55,10 +57,17 @@ ImTextureID TextureManager::updateTexture(const std::string& name, const cv::Mat
 }
 
 void TextureManager::releaseTexture(const std::string& name) {
-    textures_.erase(name);
+    auto it = textures_.find(name);
+    if (it != textures_.end()) {
+        backend_->waitForGpu();
+        textures_.erase(it);
+    }
 }
 
 void TextureManager::releaseAll() {
+    if (backend_ && !textures_.empty()) {
+        backend_->waitForGpu();
+    }
     textures_.clear();
 }
 
@@ -157,6 +166,9 @@ bool TextureManager::createTexture(TextureHandle& handle, int width, int height)
 
     device->CreateShaderResourceView(handle.texture.Get(), &srvDesc, handle.cpuHandle);
 
+    // Texture starts in COPY_DEST state
+    handle.isInShaderResourceState = false;
+
     return true;
 }
 
@@ -165,6 +177,18 @@ void TextureManager::uploadTextureData(TextureHandle& handle, const cv::Mat& rgb
 
     ID3D12Device* device = backend_->getDevice();
     ID3D12GraphicsCommandList* cmdList = backend_->getCommandList();
+
+    // Transition from shader resource to copy dest if needed
+    if (handle.isInShaderResourceState) {
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource = handle.texture.Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        cmdList->ResourceBarrier(1, &barrier);
+    }
 
     // Get texture layout info
     D3D12_RESOURCE_DESC textureDesc = handle.texture->GetDesc();
@@ -215,6 +239,8 @@ void TextureManager::uploadTextureData(TextureHandle& handle, const cv::Mat& rgb
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
     cmdList->ResourceBarrier(1, &barrier);
+
+    handle.isInShaderResourceState = true;
 }
 
 } // namespace gui
