@@ -53,19 +53,41 @@ struct BoardParams {
 // Paper format for calibration boards
 enum class PaperFormat {
     A4,
-    Letter
+    A3,
+    A2,
+    ANSI_A,  // Letter
+    ANSI_B,
+    ANSI_C
 };
 
 // Paper format names for UI
 inline const char* PAPER_FORMAT_NAMES[] = {
     "A4 (210 x 297 mm)",
-    "Letter (8.5 x 11 in)"
+    "A3 (297 x 420 mm)",
+    "A2 (420 x 594 mm)",
+    "ANSI A / Letter (8.5 x 11 in)",
+    "ANSI B (11 x 17 in)",
+    "ANSI C (17 x 22 in)"
 };
-constexpr int PAPER_FORMAT_COUNT = 2;
+constexpr int PAPER_FORMAT_COUNT = 6;
 
 // Paper dimensions in mm
-inline const double PAPER_WIDTH_MM[] = { 210.0, 215.9 };
-inline const double PAPER_HEIGHT_MM[] = { 297.0, 279.4 };
+inline const double PAPER_WIDTH_MM[] = {
+    210.0,   // A4
+    297.0,   // A3
+    420.0,   // A2
+    215.9,   // ANSI A (Letter): 8.5 in
+    279.4,   // ANSI B: 11 in
+    431.8    // ANSI C: 17 in
+};
+inline const double PAPER_HEIGHT_MM[] = {
+    297.0,   // A4
+    420.0,   // A3
+    594.0,   // A2
+    279.4,   // ANSI A (Letter): 11 in
+    431.8,   // ANSI B: 17 in
+    558.8    // ANSI C: 22 in
+};
 
 // Parameters for calibration board generation (print-ready)
 struct CalibrationBoardParams {
