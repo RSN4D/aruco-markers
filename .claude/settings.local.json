@@ -29,7 +29,10 @@
       "Bash(D:/GitHub/aruco-markers/build/create_markers/Release/generate_calibration_board.exe:*)",
       "Bash(C:/rsn/vcpkg/vcpkg install imgui[dx12-binding]:x64-windows)",
       "Bash(echo $env:VCPKG_ROOT)",
-      "Bash(C:/rsn/vcpkg/vcpkg.exe version:*)"
+      "Bash(C:/rsn/vcpkg/vcpkg.exe version:*)",
+      "Bash(copy \"D:\\\\GitHub\\\\aruco-markers\\\\aruco_lib\\\\src\\\\*.cpp\" \"D:\\\\GitHub\\\\R4D-CameraCalibration\\\\src\\\\aruco_lib\"\")",
+      "Bash(copy \"D:\\\\GitHub\\\\aruco-markers\\\\aruco_lib\\\\include\\\\aruco_lib\\\\*.hpp\" \"D:\\\\GitHub\\\\R4D-CameraCalibration\\\\include\\\\aruco_lib\"\")",
+      "Bash(xcopy:*)"
     ]
   }
 }
